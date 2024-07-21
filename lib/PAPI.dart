@@ -1,5 +1,8 @@
+//newsapi without model class
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
+
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -11,178 +14,238 @@ class NewsApi extends StatefulWidget {
 }
 
 class _NewsApiState extends State<NewsApi> {
-  late Future<Map<String, dynamic>> futureNews;
-
-  @override
-  void initState() {
-    super.initState();
-    futureNews = fetchNews();
-  }
-
-  Future<Map<String, dynamic>> fetchNews() async {
-    final url = Uri.parse("https://newsapi.org/v2/everything?q=tesla&from=2024-04-25&sortBy=publishedAt&apiKey=70353fcfc13943b98ce20eb710663121");
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      return json.decode(response.body);
-    } else {
-      throw Exception("Failed to load news");
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("News API"),
-        centerTitle: true,
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: futureNews,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          } else if (!snapshot.hasData || snapshot.data == null) {
-            return Center(child: Text("No data available"));
-          } else {
-            var data = snapshot.data!;
-            var articles = data["articles"];
-            return ListView.builder(
-              itemCount: articles.length,
-              itemBuilder: (context, index) {
-                var article = articles[index];
-                return ArticleCard(article: article);
-              },
-            );
-          }
-        },
-      ),
-    );
+        appBar: AppBar(
+          title: Text(
+            "News Api",
+          ),
+          centerTitle: true,
+        ),
+        body: FutureBuilder<String>(
+          future: newsapi(),
+          builder: (BuildContext context, AsyncSnapshot<String> snapshot) {
+            // return snapshot.hasData ? Text("Data Existed"): Text("Error");
+            Widget w;
+            if (snapshot.hasData) {
+              var data = snapshot.data!;
+              var body = json.decode(data);
+              int count = body["articles"].length;
+              print(count);
+              w = Center(
+                  child: ListView.builder(
+                      itemCount: count,
+                      itemBuilder: (BuildContext context, int index) {
+                        String author =
+                            body["articles"][index]["author"].toString();
+                        String title =
+                            body["articles"][index]["title"].toString();
+                        String description =
+                            body["articles"][index]["title"].toString();
+                        String url = body["articles"][index]["url"].toString();
+                        String urlToImage =
+                            body["articles"][index]["urlToImage"].toString();
+                        String publishedAt =
+                            body["articles"][index]["publishedAt"].toString();
+                        String content =
+                            body["articles"][index]["content"].toString();
+                        return Card(
+                          elevation: 3,
+                          color: Colors.grey,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(
+                                height: 5,
+                              ),
+                              Text(
+                                "${author}",
+                                style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    fontStyle: FontStyle.italic),
+                              ),
+                              SizedBox(
+                                width: 10,
+                              ),
+                              Text(
+                                publishedAt.substring(0, 10) + "  ",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(
+                                height: 5,
+                              ),
+                              Text(
+                                title,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Image.network(
+                                urlToImage,
+                                errorBuilder: (BuildContext context,
+                                    Object exception, StackTrace? stackTrace) {
+                                  return const SizedBox();
+                                },
+                              ),
+                              SizedBox(
+                                height: 10,
+                              ),
+                              InkWell(
+                                onTap: () {
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (context) =>
+                                              DetailDescription(
+                                                  title: title,
+                                                  author: author,
+                                                  date: publishedAt,
+                                                  description: description,
+                                                  urltoImage: urlToImage,
+                                                  content: content,
+                                                  url: url)));
+                                },
+                                child: Align(
+                                  alignment: Alignment.bottomRight,
+                                  child: Text(
+                                    "Read More..." + " ",
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              )
+                            ],
+                          ),
+                        );
+                      }));
+            } else if (snapshot.hasError) {
+              w = Text("Error + ${snapshot.hasError}");
+            } else {
+              w = Center(
+                child: CircularProgressIndicator(),
+              );
+            }
+            return w;
+          },
+        ));
+  }
+
+  Future<String> newsapi() async {
+    Uri url = Uri.parse(
+        "https://newsapi.org/v2/everything?q=tesla&from=2023-10-30&sortBy=publishedAt&apiKey=70353fcfc13943b98ce20eb710663121"); //paste the api key
+    print(url.toString());
+    final response = await http.get(url);
+    if (response.statusCode == 200) {
+      print(response.body.toString());
+    }
+    return response.body;
   }
 }
 
-class ArticleCard extends StatelessWidget {
-  final Map<String, dynamic> article;
-
-  const ArticleCard({Key? key, required this.article}) : super(key: key);
+class DetailDescription extends StatelessWidget {
+  DetailDescription(
+      {Key? key,
+      required this.title,
+      required this.author,
+      required this.date,
+      required this.description,
+      required this.urltoImage,
+      required this.content,
+      required this.url})
+      : super(key: key);
+  String author;
+  String title;
+  String description;
+  String date;
+  String urltoImage;
+  String content;
+  String url;
 
   @override
   Widget build(BuildContext context) {
-    String author = article["author"] ?? "Unknown";
-    String title = article["title"] ?? "No Title";
-    String description = article["description"] ?? "No Description";
-    String url = article["url"] ?? "";
-    String urlToImage = article["urlToImage"] ?? "";
-    String publishedAt = article["publishedAt"] ?? "";
-    String content = article["content"] ?? "No Content";
-
-    return Card(
-      elevation: 3,
-      color: Colors.grey[200],
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
+    print("=======================" + urltoImage);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Trending News"),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(author, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic)),
-            SizedBox(height: 5),
-            Text(publishedAt.substring(0, 10), style: TextStyle(fontWeight: FontWeight.bold)),
-            SizedBox(height: 5),
-            Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-            SizedBox(height: 5),
-            if (urlToImage.isNotEmpty)
-              Image.network(urlToImage, errorBuilder: (context, error, stackTrace) => SizedBox.shrink()),
-            SizedBox(height: 10),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+              "Title: ${title}",
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+              "Author: ${author}",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+              "Date : ${date.substring(0, 10)}",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+              "Description: ${description}",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            // ignore: unnecessary_null_comparison
+
+            Image.network(
+              urltoImage,
+              errorBuilder: (BuildContext context, Object exception,
+                  StackTrace? stackTrace) {
+                return const Text('Image was Removed');
+              },
+            ),
+            SizedBox(
+              height: 10,
+            ),
+            Text(
+              "Content: ${content}",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(
+              height: 10,
+            ),
             InkWell(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DetailDescription(
-                      title: title,
-                      author: author,
-                      date: publishedAt,
-                      description: description,
-                      urltoImage: urlToImage,
-                      content: content,
-                      url: url,
-                    ),
-                  ),
+              onTap: () async {
+                await launchUrl(
+                  Uri.parse(url),
                 );
               },
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: Text("Read More...", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              child: Text(
+                "Url: ${url}",
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.blue),
               ),
-            ),
+            )
           ],
         ),
       ),
     );
   }
 }
-
-class DetailDescription extends StatelessWidget {
-  final String author;
-  final String title;
-  final String description;
-  final String date;
-  final String urltoImage;
-  final String content;
-  final String url;
-
-  const DetailDescription({
-    Key? key,
-    required this.author,
-    required this.title,
-    required this.description,
-    required this.date,
-    required this.urltoImage,
-    required this.content,
-    required this.url,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: Text("Trending News"),
-          centerTitle: true,
-        ),
-        body: SingleChildScrollView(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                Text("Title: $title", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            Text("Author: $author", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-            SizedBox(height: 10),
-            Text("Date: ${date.substring(0, 10)}", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            SizedBox(height: 10),
-            Text("Description: $description", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            SizedBox(height: 10),
-            if (urltoImage.isNotEmpty)
-        Image.network(urltoImage, errorBuilder: (context, error, stackTrace) => Text('Image was removed')),
-    SizedBox(height: 10),
-    Text("Content: $content", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-    SizedBox(height: 10),
-    InkWell(
-    onTap: () async {
-    if (await canLaunch(url)) {
-    await launch(url);
-    } else {
-    throw 'Could not launch $url';
-    }
-    },
-    child: Text("Url: $url", style:TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.blue)),
-    ),
-                ],
-            ),
-        ),
-    );
-  }
-}
-
